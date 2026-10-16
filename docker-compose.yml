@@ -1,0 +1,64 @@
+name: swfl-gis
+
+services:
+  db:
+    # Multi-arch (Apple Silicon) build of the official postgis/postgis image
+    image: imresamu/postgis:17-3.5
+    container_name: gis-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gis}
+      POSTGRES_USER: ${POSTGRES_USER:-gis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    command: >
+      postgres
+        -c shared_buffers=512MB
+        -c work_mem=64MB
+        -c maintenance_work_mem=512MB
+        -c max_wal_size=4GB
+    ports:
+      # Bound to localhost only. QGIS on this Mac connects to localhost:${DB_PORT:-5432}.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot job: downloads the source data and (re)builds the tables.
+  #   docker compose run --rm loader            # download if stale (>6 days) and load
+  #   docker compose run --rm loader --refresh  # force re-download
+  loader:
+    build: ./loader
+    container_name: gis-loader
+    profiles: ["load"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-gis}
+      PGUSER: ${POSTGRES_USER:-gis}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      READER_PASSWORD: ${READER_PASSWORD:?set READER_PASSWORD in .env}
+    volumes:
+      - ./data:/data
+      - ./sql:/sql:ro
+
+  # MCP server so Claude (or any MCP client) can query the database.
+  mcp:
+    build: ./mcp
+    container_name: gis-mcp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://gis_reader:${READER_PASSWORD}@db:5432/${POSTGRES_DB:-gis}
+    ports:
+      - "127.0.0.1:${MCP_PORT:-8000}:8000"
+
+volumes:
+  pgdata:
