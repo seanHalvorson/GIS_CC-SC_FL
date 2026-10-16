@@ -203,8 +203,7 @@ def load_xlsx_codes(cur, path, table):
 
 def ogr(src: str, table: str, *extra):
     pg = "PG:" + " ".join(f"{k}={os.environ[v]}" for k, v in
-                          [("host", "PGHOST"), ("dbname", "PGDATABASE"), ("user", "PGUSER"),
-                           ("password", "PGPASSWORD")])
+                          [("host", "PGHOST"), ("dbname", "PGDATABASE"), ("user", "PGUSER")])
     cmd = ["ogr2ogr", "-f", "PostgreSQL", pg, src,
            "-nln", f"raw.{table}", "-t_srs", "EPSG:4326", "-nlt", "PROMOTE_TO_MULTI",
            "-lco", "GEOMETRY_NAME=geom", "-lco", "PRECISION=NO", "-lco", "SPATIAL_INDEX=NONE",
@@ -287,7 +286,6 @@ def stage():
 
 def psql(name: str):
     subprocess.run(["psql", "-v", "ON_ERROR_STOP=1",
-                    "-v", f"reader_password={os.environ['READER_PASSWORD']}",
                     "-v", f"DBNAME={os.environ['PGDATABASE']}",
                     "-q", "-f", str(SQL / name)], check=True)
 

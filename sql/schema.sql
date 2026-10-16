@@ -1,5 +1,5 @@
 -- Final (query-facing) schema. Idempotent: safe to run on every load.
--- Run with: psql -v ON_ERROR_STOP=1 -v reader_password=... -f schema.sql
+-- Run with: psql -v ON_ERROR_STOP=1 -v DBNAME=gis -f schema.sql
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -334,9 +334,10 @@ $$;
 ---------------------------------------------------------------------------
 -- Read-only role for the MCP server / QGIS viewers
 ---------------------------------------------------------------------------
-SELECT format('CREATE ROLE gis_reader LOGIN PASSWORD %L', :'reader_password')
+-- No password: the server uses trust auth (db/pg_hba.conf).
+SELECT 'CREATE ROLE gis_reader LOGIN'
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gis_reader') \gexec
-ALTER ROLE gis_reader PASSWORD :'reader_password';
+ALTER ROLE gis_reader PASSWORD NULL;
 ALTER ROLE gis_reader SET default_transaction_read_only = on;
 ALTER ROLE gis_reader SET statement_timeout = '60s';
 GRANT CONNECT ON DATABASE :"DBNAME" TO gis_reader;
