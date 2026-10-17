@@ -17,7 +17,7 @@ connection, with flood-zone styles pre-loaded), and plain **SQL**.
 ## Quick start
 
 ```bash
-cp .env.example .env        # then set the two passwords (already done if .env exists)
+cp .env.example .env        # optional: change the database name or ports
 docker compose up -d        # PostGIS + MCP server
 docker compose --profile load run --rm loader   # download + load everything (~10–20 min)
 ```
@@ -76,7 +76,7 @@ Layer → Add Layer → Add PostGIS Layers → New connection:
 | Host | `localhost` |
 | Port | `5432` (or `DB_PORT` from `.env`) |
 | Database | `gis` |
-| Username / password | `gis_reader` / `READER_PASSWORD` from `.env` (read-only), or `gis` / `POSTGRES_PASSWORD` |
+| Username | `gis_reader` (read-only) or `gis` (full access). Leave the password blank. |
 
 Useful layers:
 
@@ -117,6 +117,13 @@ sql/transform.sql    raw.* → parcels, sales, flood_zones, firm_panels, parcel_
 sql/qgis_styles.sql  default QGIS styles stored in layer_styles
 mcp/server.py        MCP tools
 ```
+
+## No passwords
+
+The database uses PostgreSQL `trust` authentication (`db/pg_hba.conf`), so no logins need a password.
+That's only safe because ports 5432 and 8000 are published on `127.0.0.1`: other computers on your network
+can't reach them, but any program running on this Mac can, including with the full-access `gis` user.
+Don't change the port bindings to `0.0.0.0` without turning passwords back on.
 
 ## Troubleshooting
 

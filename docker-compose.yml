@@ -9,9 +9,11 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gis}
       POSTGRES_USER: ${POSTGRES_USER:-gis}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # No passwords (see db/pg_hba.conf). Only reachable from this Mac.
+      POSTGRES_HOST_AUTH_METHOD: trust
     command: >
       postgres
+        -c hba_file=/etc/postgresql/pg_hba.conf
         -c shared_buffers=512MB
         -c work_mem=64MB
         -c maintenance_work_mem=512MB
@@ -21,6 +23,7 @@ services:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -41,8 +44,6 @@ services:
       PGHOST: db
       PGDATABASE: ${POSTGRES_DB:-gis}
       PGUSER: ${POSTGRES_USER:-gis}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      READER_PASSWORD: ${READER_PASSWORD:?set READER_PASSWORD in .env}
     volumes:
       - ./data:/data
       - ./sql:/sql:ro
@@ -56,7 +57,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://gis_reader:${READER_PASSWORD}@db:5432/${POSTGRES_DB:-gis}
+      DATABASE_URL: postgresql://gis_reader@db:5432/${POSTGRES_DB:-gis}
     ports:
       - "127.0.0.1:${MCP_PORT:-8000}:8000"
 
